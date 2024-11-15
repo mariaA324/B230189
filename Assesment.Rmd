@@ -1,0 +1,180 @@
+---
+title: "Contraceptives across space, time and their association with various social markers "
+author: "Maria Amoah"
+date: "2024-11-08"
+output: 
+  pdf_document: 
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+library(here)
+library(janitor)
+library(gt)
+library(sf)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+```
+
+
+Combined 2022 prescribing data comes from every month in 2022 from the [Public Health Scotalnd Open Prescribing Dataset](https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community). Data on Healthboards and population data on sex and age has been loaded in here.
+
+```{r cars, include = FALSE}
+prescribing_2022_files <-list.files(path = "data", pattern = "*.csv")
+
+
+combined_2022_prescribing_data <- prescribing_2022_files %>% 
+  map_dfr(~read_csv(here("data", . ))) %>% 
+  clean_names()
+
+health_boards <- read.csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
+  clean_names()
+
+# Eliminating the archived healthboard repeats in the datset
+health_boards <- health_boards[-c (4,7,9,13),]
+
+sex_data <- read.csv("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_14102024.csv") %>% 
+  filter(Year == "2022") %>% 
+  clean_names()
+
+
+```
+ 
+*Grouping commonly prescribed contraceptive drugs into five categories:*
+
+* Combined oral contraceptive
+* Progesterone only pill
+* Intrauterine contraceptives
+* Contraceptive injection
+* Hormone patch 
+
+The prescribed drug brand names come from NICE who list the UK brand names of  drugs.
+
+```{r pressure, echo=FALSE}
+
+birth_control_coc <- c("MICROGYON","RIGEVIDON","OVRANETTE", "CILEST", "CILIQUE", "YASMIN", "MARVELON", "GEDAREL", "ZOELY","FEMODETTE", "MILLINETTE", "SUNYA", "CIMZIT", "KATYA", "LEVEST", "LIZINNA", "FEMODENE", "LUCETTE", "BREVINOR", "OVYSMEN", "NORIMIN", "LOGYNON", "MERCILON")
+
+birth_control_prog <- c("NORGESTON","NORIDAY","CERAZETTE", "ZELLETA", "CERELLE", "DESOGESTROL" )
+
+iuc <- c("MIRENA", "KYLEENA", "JAYDESS", "LEVOSERT", "BENILEXA", "COPPER T380 A", "NOVAPLUS")
+
+hormone_patch <-  "EVRA"
+
+contraceptive_injection <- "DEPO-PROVERA"
+
+all_contraceptives <- c(birth_control_coc, birth_control_prog, iuc, hormone_patch, contraceptive_injection)
+
+collapsed_contraceptives <- paste(all_contraceptives, collapse = "|")
+
+# Filtering the dataset to only include contraceptive prescriptions
+
+all_contraceptive_data <- combined_2022_prescribing_data %>% 
+  filter(str_detect(bnf_item_description,collapsed_contraceptives))
+
+```
+
+## Figure 1 :
+Investigating the difference in contraception prescription rate across the Scottish NHS Healthboards.
+
+The use of 2019 Spatial Data structure files is appropriate as the borders used in 2022 were determined in 2013(CITE)and have not changed
+```{r, warning=FALSE, fig.cap="The distribution shows highest rates of contraception prescription in Lothian and Glasgow & Clyde,may be because these halthboards contain Scotland's two most densely popualted, big cities,  and lowest rates in Tayside. There is a general trend of higher levels in the South compared to the North." }
+
+joined_by_hb_name <-full_join(all_contraceptive_data, health_boards, by = join_by(hbt == hb))
+sex_data <- sex_data %>% 
+  filter(sex != "All")
+joined_with_sex <- full_join(joined_by_hb_name, sex_data, by = join_by("hbt"=="hb"))%>% 
+  filter(sex != "Male") 
+
+contraception_proportion <- joined_with_sex %>% 
+  group_by(hbt) %>% 
+  filter(!is.na(number_of_paid_items)) %>% 
+  summarise(per_hb =sum(number_of_paid_items)/mean(all_ages))
+
+nhs_healthboard <- st_read(here("data/NHS_healthboards_2019.shp"))
+
+joined_with_polygon <-full_join(nhs_healthboard, contraception_proportion, by = join_by("HBCode"=="hbt")) 
+
+contraception_distribution_hb <- joined_with_polygon %>% 
+  ggplot(aes(fill = per_hb))+
+   scale_fill_viridis_c(name = "Contraception prescription proportion") +
+  geom_sf()+
+  labs(title = "Contraception Prescribed to Women Across Scotland's Healthboards",
+       subtitle = "Measured Proportionally Against Each Healthboard's Female Population") +
+  theme_minimal()
+
+contraception_distribution_hb
+```
+
+
+
+## Figure 2 : 
+Observing whether or not there is a trend between age group and choice of contraceptive method
+
+```{r, fig.cap= "Distribution across contraceptive types are similar with age 26-35 consistently being prescribed the largest number of each contraceptive type. Older age groups seem to be prescribed less progesterone only pills with the 16-25 group is slightly less than 36-45 in all except progesterone pills and 46-55 also being prescribed proprotionally less compared to the other contraceptive types."}
+collapsed_coc <- paste(birth_control_coc, collapse = "|")
+collapsed_p <- paste(birth_control_prog, collapse = "|")
+collapsed_iuc <-  paste(iuc, collapse = "|")
+
+# Renaming bnf_item_description column so I can group by the contraceptive categories
+grouped_contraceptive_data <- joined_with_sex %>%
+  mutate(bnf_item_description = if_else(str_starts(bnf_item_description, collapsed_coc), "combined_pill", bnf_item_description),
+         bnf_item_description = if_else(str_starts(bnf_item_description, collapsed_p), "progesterone", bnf_item_description),
+         bnf_item_description = if_else(str_starts(bnf_item_description, collapsed_iuc), "iuc", bnf_item_description),
+         bnf_item_description = if_else(str_starts(bnf_item_description, "EVRA"), "hormone_patch", bnf_item_description),
+         bnf_item_description = if_else(str_starts(bnf_item_description, "DEPO-PROVERA"), "injection", bnf_item_description))
+
+#does multiplying it by number_of_paid_items this way multiply all of the ones in on bnf_item description by the same thing..
+
+grouped_contraceptive_data <- grouped_contraceptive_data %>%
+  group_by(bnf_item_description) %>%
+  summarize(
+    "16-25" = sum(rowSums(across(age16:age25) * number_of_paid_items), na.rm = TRUE),
+    "26-35" = sum(rowSums(across(age26:age35) * number_of_paid_items), na.rm = TRUE),
+    "36-45" = sum(rowSums(across(age36:age45) * number_of_paid_items), na.rm = TRUE),
+    "46-55" = sum(rowSums(across(age46:age55) * number_of_paid_items), na.rm = TRUE)
+  )
+
+grouped_contraceptive_data <- grouped_contraceptive_data %>%
+  pivot_longer(cols = `16-25`:`46-55`, values_to = "weighted_pop", names_to = "age")
+
+grouped_contraceptive_data %>%
+  filter(!is.na(bnf_item_description)) %>% 
+  ggplot(aes(x = age, y = weighted_pop, fill = bnf_item_description)) +
+  geom_col() +
+  facet_wrap(~ bnf_item_description, scales = "free", labeller = labeller(bnf_item_description = c(
+    "combined_pill" = "Combined Pill",
+    "progesterone" = "Progesterone Only",
+    "injection" = "Contraceptive Injection",
+    "hormone_patch" = "Hormone Patch",
+    "iuc" = "Intrauterine Contraceptive"
+  ))) +
+  labs(title = "Population Distribution by Age Group and Contraceptive Type",
+       x = "Age Group",
+       y = "Weighted Population",
+       fill = "Contraceptive Type") +
+  theme_minimal(base_size = 8)
+
+```
+A Limitation to this graph is that direct, person-specific comparisons between age and contraception rates were not possible so these graphs show a correlation between age distribution in healthboards and choice of contraception 
+
+I will do it proportionally to the population of each age group? otherwise could j be showing difference in populations of different age categories. 
+
+
+## Idea for Figure 3 is to make a line chart showing contraceptive rate across scotland changing over time and view it alongside factors contraception infleunces such as female employment rate, abortion rate, maternal mortality etc.?
+```{r}
+
+```
+
+## Figure 4 - a table showing different rates of contracpetive prescription to different age groups ( expecting older population nearing menopause to have less and idk what else) and the cost per person each age group has for contraceptive prescription or maybe with something like 
+```{r}
+#table of some sort
+
+
+```
+
