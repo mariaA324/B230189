@@ -172,7 +172,7 @@ I will do it proportionally to the population of each age group? otherwise could
 
 ```
 
-## Figure 4 - a table showing different rates of contracpetive prescription to different age groups ( expecting older population nearing menopause to have less and idk what else) and the cost per person each age group has for contraceptive prescription or maybe with something like 
+## Figure 4 - a table showing different rates of contracpetive prescription to different age groups ( expecting older population nearing menopause to have less ) and the cost per person each age group has for contraceptive prescription or something else
 ```{r}
 #table of some sort
 
