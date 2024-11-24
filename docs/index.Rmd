@@ -1,6 +1,6 @@
 
 ---
-title: "Exploring Contraceptive Prescription across different Demographics, and its association with Neonatal Outcomes in Scotland "
+title: "Exploring Contraceptive Prescription Rates across different Demographics, and its association with Neonatal Outcomes in Scotland "
 author: "Maria Amoah"
 date: "2024-11-01"
 output:
@@ -11,7 +11,7 @@ csl: Vancouver.csl.
 ---
 ## Introduction
 
-This report is investigating the correlation between prescription of contraceptives across Scotland in 2022 and various social factors such as geographical location, age and neonate mortality. I am focusing on this topic because contraceptive prevalence rate is globally seen as an indicator of health, women's empowerment and can be used as a proxy measure of reproductive service accessibility [@landry_contraceptive_nodate].
+This report is investigating the correlation between the prescription of contraceptives across Scotland in 2022 and various social factors such as geographical location, age and neonate mortality. I am focusing on this topic because contraceptive prevalence rate is globally seen as an indicator of health, women's empowerment and can be used as a proxy measure of reproductive service accessibility [@landry_contraceptive_nodate].
 
 Although Scotland is advanced in terms of contraception accessibility - with women now being able to access three months of the progesterone-only-pill without seeing their GP - this report aims to explore if prescription and, by proxy availability of contraception, varies across age or location.
 Moreover, as increased contraception reduces the number of unintended pregnancies and is broadly associated with lower rates of infant death [@landry_contraceptive_nodate], a visualisation will be created to assess whether this correlation remains visible at a micro-level in a high income country like Scotland where Birth Mortality Rate is low. 
@@ -34,7 +34,7 @@ library(plotly)
 
 ## Setting up the data for analysis
 
-The Combined 2022 prescribing data comes from every month in 2022 from the [Public Health Scotalnd Open Prescribing Dataset](https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community). Data on Healthboards and population data on sex and age has been loaded in here.
+The Combined 2022 prescribing data comes from every month in 2022 from the [Public Health Scotalnd Open Prescribing Dataset](https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community). Data on healthboards, sex, age and 2022 Scottish birth outcomes has been loaded in here.
 
 ```{r cars, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
 # Loading in all the data:
@@ -81,7 +81,7 @@ hospital_and_hb <- read.csv("https://www.opendata.nhs.scot/dataset/cbd1802e-0e04
 -   Contraceptive injection
 -   Hormone patch
 
-The prescribed drug names come from [NICE](https://bnf.nice.org.uk/treatment-summaries/contraceptives-hormonal/) who list the UK brand names of drugs that are prescribed.
+The prescribed drug names come from [NICE](https://bnf.nice.org.uk/treatment-summaries/contraceptives-hormonal/) who list the UK drug brand names.
 
 ```{r pressurec, echo=TRUE, results='hide', warning=FALSE}
 birth_control_coc <- c("MICROGYON","RIGEVIDON","OVRANETTE", "CILEST", "CILIQUE", "YASMIN", "MARVELON", "GEDAREL", "ZOELY","FEMODETTE", "MILLINETTE", "SUNYA", "CIMZIT", "KATYA", "LEVEST", "LIZINNA", "FEMODENE", "LUCETTE", "BREVINOR", "OVYSMEN", "NORIMIN", "LOGYNON", "MERCILON")
@@ -126,9 +126,9 @@ contraception_proportion <- joined_with_sex %>%
 
 nhs_healthboard <- st_read(here("data/NHS_healthboards_2019.shp"))
 
-joined_with_polygon <-full_join(nhs_healthboard, contraception_proportion, by = join_by("HBCode"=="hbt")) 
+joined_with_spatial <-full_join(nhs_healthboard, contraception_proportion, by = join_by("HBCode"=="hbt")) 
 
-contraception_distribution_hb <- joined_with_polygon %>% 
+contraception_distribution_hb <- joined_with_spatial %>% 
   ggplot(aes(fill = per_hb))+
    scale_fill_viridis_c( name = "Contraception prescription proportion", option = "D") +
   geom_sf()+
@@ -143,7 +143,7 @@ contraception_distribution_hb
 As I have divided the number of paid items by mean of all ages the results may be skewed by the population age distribution, with areas with older populations appearing to have lower contraceptive rates. Also in the Open Prescribing Dataset the "number_of_paid_items" and "paid_quantity" variables  are not clearly defined in the data dictionary so I had to make a judgment call on which one referred to the number of prescriptions bought. 
 
 **Next steps:** 
-A dataset with clear age cut-offs for when each data point stopped contraceptive use would solve the age distirbution problem and having a dataset with a clearer data dictionary would solve my second problem. It would be interesting to see how abortion rate compares to contraceptive rate in each health board but the dataset contained very minimal information about the abortion pill and other abortive methods so another dataset would have to be used. 
+A dataset with clear age cut-offs for when each data point stopped contraceptive use would solve the age distirbution problem and having a dataset with a clearer data dictionary would solve the second problem. It would be interesting to see how abortion rate compares to contraceptive rate in each health board but the dataset contained very minimal information about the abortion pill and other abortive methods so a richer dataset would have to be used. 
 
 ## Figure 2 :
 
@@ -169,7 +169,7 @@ grouped_contraceptive_data <- joined_with_sex %>%  renaming_column_function( bnf
 
 #Categorising each one by age-group categories, although people take contraceptives under the age of 16 I chose to start at 16 because it is the legal age of consent and go up to 55 because most women have reached menopause by then.
 
-# Renamed the data because I used the unsummarised grouped_contraceptiv_data later in the code and di not turn the below repetitions into a fucntion because it takes up the same amount of space
+# Renamed the data because I used the unsummarised grouped_contraceptive_data later in the code and did not turn the below repetitions into a function because it takes up a simialr amount of space. 
 grouped_contraceptive_data_1 <- grouped_contraceptive_data %>%
   group_by(bnf_item_description) %>%
   summarize(
@@ -201,15 +201,14 @@ grouped_contraceptive_data_1 %>%
 ```
 
 **Limitations:**
-Previous evidence shows that women under the age of 25 are most likely to use dependent forms of contraception such as the pill or condom, while women over 25 years of age used long-acting reversible contraceptives, such as IUC, implant and hormone patch[@stewart_contraception_nodate]. This visualisation does not closely mimic these results. This may be due to limitations of the joined dataset, as direct, person-specific comparisons between age and contraception rates were not possible so these graphs show a correlation between age distribution in healthboards and choice of contraception. 
+Previous evidence shows that women under the age of 25 are most likely to use dependent forms of contraception such as the pill, while women over 25 years of age used long-acting reversible contraceptives, such as IUC, implant and hormone patch[@stewart_contraception_nodate]. This visualisation does not closely mimic these results. This may be due to limitations of the joined dataset, as direct, person-specific comparisons between age and contraception rates were not possible so these graphs show a correlation between age distribution in healthboards and choice of contraception. 
 
 **Next steps:**
 Future visualisations could use a dataset that collected information about age group and contraceptive use in the same cohort.
 
 ## Figure 3
 
-A table looking at the cost of each Contraceptive Type and whether or not it differs by Age Group.. Before describing the table see if i can make it interactive ( if i have time / effort)
-
+A table looking at the cost of each Contraceptive Type and whether or not it differs by Age Group.
 ```{r,}
 
 # Use of NA-character_ and the "^\\d+$" because otherwise I was getting errors about it not being numeric
@@ -234,7 +233,7 @@ table_contraceptive_type <- table_contraceptive_type %>%
   )) %>%
   filter(!is.na(age_group)) 
 
-# Join costs with population data, .groups drop allows for further manipulation of data
+# Join costs with population data, .groups = drop allows for further manipulation of data
 cost_per_age_group <- table_contraceptive_type %>%
   group_by(bnf_item_description, age_group) %>%
   summarise(
@@ -270,7 +269,7 @@ Scatterplot seeing if there is a correlation between proportion of Live/Still Bi
 
 Using plotly and the notation learnt from the [plotly in r website](https://plotly.com/r/).
 
-```{r, warning=FALSE, fig.cap= "Figure 4: As expected from a high income country, the Live Birth Rate of babies is high with 4 healthboards having a 100% Live Birth Rate and the lowest percentage being over 99.94%. Although Conntraceptive Rate varies more widely across Healthboards(0.125 to 0.225), there is no clear relationship between Baby Survival Rate and Contraceptive Rate. The addition of extra social factors(such as socioeconomic group) may reveal a more distinct relationship."}
+```{r, warning=FALSE, fig.cap= "Figure 4: As expected from a high income country, the Live Birth Rate of babies is high with 4 healthboards having a 100% Live Birth Rate and the lowest percentage being over 99.94%. Although Contraceptive Rate varies more widely across Healthboards(0.125 to 0.225), there is no clear relationship between Baby Survival Rate and Contraceptive Rate. The addition of extra social factors(such as socioeconomic group) may reveal a more distinct relationship."}
 
 # Necessary to join hospital code to Healthboard code because Live/Still Birth information is done by hospital not Healthboard
 join_hb_hospital_birth_22 <-  left_join(births_by_hospital, hospital_and_hb, by = join_by("hospital"== "hospital_code"))
@@ -286,9 +285,10 @@ summarised_births_22 <- join_hb_hospital_birth_22 %>%
     proportion_alive = total_live / (total_live + total_still)
   )
 
-summarised_births_22 <- full_join(summarised_births_22, health_boards, by = join_by("health_board"== "hb"))
+summarised_births_22 <- full_join(summarised_births_22, health_boards, by = join_by("health_board"== "hb")) 
 
-summarised_births_22 <-   full_join(summarised_births_22, contraception_proportion, by = join_by("health_board" == "hbt"))
+summarised_births_22 <-   full_join(summarised_births_22, contraception_proportion, by = join_by("health_board" == "hbt")) %>% 
+  filter(!is.na(hb_name))
 
 # To make the plot interactive I used the plotly package, the text parameter defines the tooltip content in the plot and the <br> inserts a line break in the html tag
 
@@ -319,6 +319,8 @@ Using data from  both  the Financial Year 2022/23 and the year 2022 is not direc
 
 **Next steps:**
 It would be interesting to use extra social factors(such as socioeconomic group) which may reveal a more distinct relationship.
+
+Overall, the Open prescribing dataset lacked in granularity, as it was only able to join to other datasets of interest through aggregating the data at the healthboard level. This reduces the ability to make specific comparisons of prescription rates across social markers such as age(Figure 2 and 3). Incorporating an age-standardised analysis could mitigate this limitation this and improve robustness of comparison. Moreover, the lack of a data dictionary reduces the trust that we are comparing prescription rate across healthboards(Figure 1 and 4). Either requesting a clearer data dictionary for this dataset or using a different one would increase clarity of what is being compared amongst healthboards. 
 
 
 **Use of generative AI**: I used ChatGPT to help me sort through errors and warnings when R documentation wasn't helpful enough. 
